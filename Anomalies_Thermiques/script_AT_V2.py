@@ -203,8 +203,12 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
             
             
             #chunk = points_sorted.iloc[start : start + chunk_size].reset_index(drop=True)
+            CRS_PROJ = "EPSG:3857"  # UTM zona 19S — ajusta según tu área exacta
+            
+            centroids = points_buffered.geometry.to_crs(CRS_PROJ).centroid.to_crs(points_buffered.crs)
+            
             points_in_tile = points_buffered[
-                points_buffered.intersects(tile_geom)
+                centroids.within(tile_geom)
             ].reset_index(drop=True)
             
             if len(points_in_tile) == 0:
@@ -306,6 +310,8 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print("Last Filter ok ...")
 
     df_result = cluster_spatiotemporal(gdf_final_filtrado, spatial_km=1.0, temporal_days=15)
+    df_oldest = df_result.sort_values('date').groupby('cluster').first().reset_index()
+
 
     
     
@@ -331,7 +337,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print(f"\n{'─'*40}")
     print(f"  TOTAL: {timedelta(seconds=int(time.time() - t_total))}")
     print(f"{'─'*40}")
-    return df,df_result,gdf,final_stats,gdf_final_filtrado
+    return df,df_result,gdf,final_stats,gdf_final_filtrado,df_oldest,points_buffered
 
 
   except Exception as e:
@@ -340,7 +346,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
 
 
     
-df,df_result,gdf,final_stats,gdf_final_filtrado=filt_csv('D:/MesProgrammes/MCD14ML/fire_archive_M-C61_706555.csv',
+df,df_result,gdf,final_stats,gdf_final_filtrado,df_oldest,points_buffered=filt_csv('D:/MesProgrammes/MCD14ML/fire_archive_M-C61_706555.csv',
                        'D:/MesProgrammes/Limits_countries/GAUL_2024_L1.shp',
                        'D:/MesProgrammes/MCD14ML/copernicus_dem_andes/output/mosaico_andes_filtrado.tif',
                        'D:/MesProgrammes/MCD14ML/copernicus_wc_andes/output/mosaico_andes_filtrado.tif',
