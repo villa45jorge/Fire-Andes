@@ -103,8 +103,8 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print("df shape: ",df.shape)
     #breakpoint()
 
-    #df =df.sample(n=100000, random_state=45)
-    df =df.sample(n=1000, random_state=69)
+    df =df.sample(n=100000, random_state=45)
+    #df =df.sample(n=1000, random_state=69)
     
     t = timer("Carga de datos", t)
     
@@ -142,15 +142,17 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     gdf = gdf.to_crs(countries.crs)
     
     points_with_country = gpd.sjoin(gdf, countries, how='left', predicate='within')
-
+    
+    BUFFER_SIZE = 0.5
+    
      # Crear buffers cuadrados de 1°x1° directamente
-    def create_square_buffer(point, size=0.5):
+    def create_square_buffer(point, size=BUFFER_SIZE):
         """Crea un cuadrado de (size*2)° x (size*2)° alrededor del punto"""
         x, y = point.x, point.y
         return box(x - size, y - size, x + size, y + size)  
         
     points_buffered = points_with_country.copy()
-    points_buffered['geometry'] = points_with_country.geometry.apply(lambda p: create_square_buffer(p, 0.5))
+    points_buffered['geometry'] = points_with_country.geometry.apply(lambda p: create_square_buffer(p, BUFFER_SIZE))
   
     print("Dataframe buffered taille:",points_buffered.shape)
     print("Buffering ok ...")
@@ -214,10 +216,17 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
             if len(points_in_tile) == 0:
                 skipped_tiles += 1
                 continue
+            minx, miny, maxx, maxy = tile_geom.bounds
+            tile_geom_expanded = box(
+                minx - BUFFER_SIZE,
+                miny - BUFFER_SIZE,
+                maxx + BUFFER_SIZE,
+                maxy + BUFFER_SIZE
+            )
             try:
                 out_image, out_transform = rio_mask(
                     src,
-                    [tile_geom],
+                    [tile_geom_expanded],
                     crop=True,
                     all_touched=True
                 )
@@ -225,7 +234,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
                 
                 out_image2, out_transform2 = rio_mask(
                     src2,
-                    [tile_geom],
+                    [tile_geom_expanded],
                     crop=True,
                     all_touched=True
                 )
