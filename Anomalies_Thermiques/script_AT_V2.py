@@ -16,7 +16,6 @@ import os
 from tqdm import tqdm
 from datetime import timedelta
 import time
-#import math
 import rasterio
 from rasterio.mask import mask as rio_mask
 import gc
