@@ -5,11 +5,10 @@ Version 2.0.0
 @author: jvilla
 """
 
+from pathlib import Path
 import pandas as pd
 import numpy as np
-#import matplotlib.pyplot as plt
 from rasterstats import zonal_stats
-#from scipy import stats as sp_stats
 import geopandas as gpd
 from shapely.geometry import box
 import os
@@ -20,11 +19,15 @@ import rasterio
 from rasterio.mask import mask as rio_mask
 import gc
 from shapely.geometry import shape
-
 from sklearn.neighbors import BallTree
 import networkx as nx
-#import numpy as np
-#import pandas as pd
+
+# Definir rutas
+base_dir = Path("/media/villaramos/Donnees/MesProgrammes/MCD14ML")
+data_dir = base_dir / "data" / "raw"
+output_dir = data_dir / "outputs"
+processed_dir = base_dir / "data" / "processed"
+test_dir = base_dir / "test"
 
 # --- Función utilitaria ---
 def timer(label, start):
@@ -94,16 +97,14 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
       
     t_total = time.time()
     #Get the file path
-    #file_name = Path(file_path).stem
+
     print("Starting work ...")
     #Read the CSV file
     t = time.time()
     df = pd.read_csv(file_path)
     print("df shape: ",df.shape)
-    #breakpoint()
 
     df =df.sample(n=100000, random_state=45)
-    #df =df.sample(n=1000, random_state=69)
     
     t = timer("Carga de datos", t)
     
@@ -127,16 +128,11 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print("Filtering ok ...")
     print("Dataframe filtered taille:",filt_df.shape)
     t = timer("Filtering DataFrame", t)
-
-
-    #Random Test
-    #filt_df=filt_df.sample(n=100000, random_state=45)
     
     gdf = gpd.GeoDataFrame(
         filt_df, 
         geometry=gpd.points_from_xy(filt_df.longitude, filt_df.latitude),
         crs='EPSG:4326')
-    #gdf.to_file("output.shp")
     
     gdf = gdf.to_crs(countries.crs)
     
@@ -157,14 +153,8 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print("Buffering ok ...")
     t = timer("Buffering DataFrame", t)
 
-    #points_sorted = points_buffered.copy()
-    #points_sorted['_lat'] = points_sorted.geometry.centroid.y
-    #points_sorted['_lon'] = points_sorted.geometry.centroid.x
-    #points_sorted = points_sorted.sort_values(['_lat', '_lon']).reset_index(drop=True)
-    #points_sorted = points_sorted.drop(columns=['_lat', '_lon'])
     
-    #print("Puntos ordenados espacialmente ✓")
-    tile_size = 1  # grados
+    tile_size = 1  
     x_min, y_min, x_max, y_max = -80, -20, -60, 1
     
     x_tiles = np.arange(x_min, x_max, tile_size)
@@ -172,7 +162,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
     #result_chunks = []
     skipped_tiles = 0
-    #chunk_size = 50_000  # ajustar según RAM disponible
+    #chunk_size = 50_000  
     tiles = []
     for x in x_tiles:
         for y in y_tiles:
@@ -180,31 +170,16 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
     print(f"N° de tiles ({tile_size}°x{tile_size}°): {len(tiles)}")
     
-    
-    #total_filas = len(points_sorted)  # ~900,000
-    #chunk_size  = 10_000
-    #n_chunks    = math.ceil(total_filas / chunk_size)
-    #n_chunks = math.ceil(len(points_buffered) / chunk_size)
-    #print(f"Total filas  : {total_filas:,}")
-    #print(f"Chunk size   : {chunk_size:,}")
-    #print(f"N° de chunks : {n_chunks}")
     all_results = []
     
-    #indices = range(0, len(points_sorted), chunk_size)
     with rasterio.open(DEM) as src, rasterio.open(WC) as src2:
-        #total_area  = (x_max - x_min) * (y_max - y_min)  # grados²
-        #tile_area   = tile_size ** 2
-        #tile_size_gb = 9.54 * (tile_area / total_area)
-        #print(f"Tamaño aprox por tile: {tile_size_gb:.2f} GB")
+
         
         for t_idx, tile_geom in enumerate(tqdm(tiles, desc="Procesando tiles")):
     
             t_tile = time.time()
             
-            
-            
-            #chunk = points_sorted.iloc[start : start + chunk_size].reset_index(drop=True)
-            CRS_PROJ = "EPSG:3857"  # UTM zona 19S — ajusta según tu área exacta
+            CRS_PROJ = "EPSG:3857"  # PseudoMercator
             
             centroids = points_buffered.geometry.to_crs(CRS_PROJ).centroid.to_crs(points_buffered.crs)
             
@@ -229,7 +204,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
                     crop=True,
                     all_touched=True
                 )
-                #recorte_mb = out_image.nbytes / 1e6
                 
                 out_image2, out_transform2 = rio_mask(
                     src2,
@@ -237,20 +211,11 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
                     crop=True,
                     all_touched=True
                 )
-                #recorte_mb2 = out_image2.nbytes / 1e6
     
             except Exception as e:
                 print(f"\n  ⚠ Tile {t_idx+1} error al recortar DEM: {e}")
                 continue    
-            
-            # Extent del chunk actual
-            #bounds  = chunk.total_bounds  # (minx, miny, maxx, maxy)
-            #bbox    = box(*bounds)
-            
-            # Leer solo la porción del DEM que cubre este chunk
-            #out_image, out_transform = rio_mask(src, [bbox], crop=True)
-            #dem_chunk  = out_image[0]
-    
+
             # Extraer estadísticas del raster
             stats = zonal_stats(
                 points_in_tile,
@@ -263,21 +228,16 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
             )
             
             
-            
             stats1 = zonal_stats(
                 points_in_tile,
                 out_image2[0],
                 affine=out_transform2, 
-                #categorical=True,      # trata los pixeles como categorías
                 stats=['majority'],    # majority = moda
                 prefix='wc_',
                 nodata=-9999,
                 geojson_out=False
             )
             
-            
-            #result_chunks.extend(stats)
-            #result_chunks.extend(stats1)
             
             stats_df_dem = gpd.GeoDataFrame(
                 [f['properties'] for f in stats],
@@ -298,19 +258,15 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
             gc.collect()
 
             print(f"  ✓ Tile {t_idx+1:02d}/{len(tiles)} "
-                  #f"— DEM recorte: {recorte_mb:.0f} MB "
                   f"— {time.time()-t_tile:.1f}s")
             
         t = timer("Zonal stats DEM", t)
 
-    #features = [f for f in result_chunks]  # liste de dicts GeoJSON Feature
     final_stats = pd.concat(all_results).reset_index(drop=True)
     gdf_final = gpd.GeoDataFrame(final_stats, geometry='geometry', crs=points_buffered.crs)    
     print("GeoDataframe Stats 1:",gdf_final.shape)
     print("Stast 1 part ok ...")
     t = timer("Stats Part one", t)
-
-
 
     umbral = 2000
     gdf_final_filtrado = gdf_final[gdf_final['dem_median'] > umbral]
@@ -320,23 +276,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     df_result = cluster_spatiotemporal(gdf_final_filtrado, spatial_km=1.0, temporal_days=15)
     df_oldest = df_result.sort_values('date').groupby('cluster').first().reset_index()
 
-
-    
-    
-    #print("GeoDataframe Stats 2:",result.shape)
-    #print("Stast 2 part ok ...")
-    #t = timer("Stats Part two", t)
-
-
-    
-    #fig, ax = plt.subplots(figsize=(15, 12))
-    #countries.plot(ax=ax, color='lightgray', edgecolor='black', linewidth=0.8)
-    #gdf.plot(ax=ax, color='red', markersize=5, alpha=0.6)
-    # Zoom en Andes
-    #ax.set_xlim(-82, -63)
-    #ax.set_ylim(-23, 13)
-    #plt.title("Países")
-    #plt.show()
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df_result.to_file(output_path)
     
@@ -351,11 +290,10 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
   except Exception as e:
     print(f"An error occurred: {e}")
     
-
-
-    
-df,df_result,gdf,final_stats,gdf_final_filtrado,df_oldest,points_buffered=filt_csv('D:/MesProgrammes/MCD14ML/fire_archive_M-C61_706555.csv',
-                       'D:/MesProgrammes/Limits_countries/GAUL_2024_L1.shp',
-                       'D:/MesProgrammes/MCD14ML/copernicus_dem_andes/output/mosaico_andes_filtrado.tif',
-                       'D:/MesProgrammes/MCD14ML/copernicus_wc_andes/output/mosaico_andes_filtrado.tif',
-                       'D:/MesProgrammes/MCD14ML/output/AnomaliesThermiques.shp')
+#Execution part  
+df,df_result,gdf,final_stats,gdf_final_filtrado,df_oldest,points_buffered=filt_csv(
+    data_dir / 'fire_archive_M-C61_706555.csv',
+    data_dir / 'Limits_countries/GAUL_2024_L1.shp',
+    data_dir / 'copernicus_dem_andes/output/mosaico_andes_filtrado.tif',
+    data_dir / 'copernicus_wc_andes/output/mosaico_andes_filtrado.tif',
+    test_dir / 'AnomaliesThermiques_test1.shp')
