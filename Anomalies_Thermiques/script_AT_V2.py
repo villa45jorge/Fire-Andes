@@ -295,5 +295,5 @@ df,df_result,gdf,final_stats,gdf_final_filtrado,df_oldest,points_buffered=filt_c
     data_dir / 'fire_archive_M-C61_706555.csv',
     data_dir / 'Limits_countries/GAUL_2024_L1.shp',
     data_dir / 'copernicus_dem_andes/output/mosaico_andes_filtrado.tif',
-    data_dir / 'copernicus_wc_andes/output/mosaico_andes_filtrado.tif',
-    test_dir / 'AnomaliesThermiques_test1.shp')
+    data_dir / 'copernicus_wc_andes_v2/output/mosaico_andes_filtrado.tif',
+    test_dir / 'AnomaliesThermiques_test2.shp')
