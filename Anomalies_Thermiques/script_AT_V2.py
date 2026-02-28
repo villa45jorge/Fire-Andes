@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 17/02/2026
-Version 2.0.0
+Version 2.1.0
 @author: jvilla
+Test 2 avec donneés WC a bon resolution spatial
+Problems:
+    1)Puntos en Brasil zona ecuatorail, impossible para considerarlo parte de Andes tropicales
+    2)Pasar puntos de polygonos a centroide nuevamente
 """
 
 from pathlib import Path
