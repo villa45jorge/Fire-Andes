@@ -5,8 +5,11 @@ Version 2.1.0
 @author: jvilla
 Test 2 avec donneés WC a bon resolution spatial
 Problems:
-    1)Puntos en Brasil zona ecuatorail, impossible para considerarlo parte de Andes tropicales
-    2)Pasar puntos de polygonos a centroide nuevamente
+    1)Puntos en Brasil zona ecuatorail, impossible para considerarlo parte de Andes tropicales (correction)
+    2)Pasar puntos de polygonos a centroide nuevamente  (correction)
+Issues:
+    1) Bolivia doesn't have the correct name (correction)
+    2) make points geometry (correction)
 """
 
 from pathlib import Path
@@ -116,6 +119,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
     countries = gpd.read_file(country_shape)
     countries = countries[['gaul0_name','geometry']]
+    
 
     #Filter CSV file
     filt_df=df.query('confidence >= 80 and ' '(`type` == 0 or `type` == 2) and '
@@ -129,6 +133,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     ]
     choicelist = ["Zone_Equatorial", "Transition_Zone", "South_Zone"]
     filt_df["Zone_Clima"] = np.select(conditionlist, choicelist, default="Not Specified")
+    
     print("Filtering ok ...")
     print("Dataframe filtered taille:",filt_df.shape)
     t = timer("Filtering DataFrame", t)
@@ -141,6 +146,10 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     gdf = gdf.to_crs(countries.crs)
     
     points_with_country = gpd.sjoin(gdf, countries, how='left', predicate='within')
+    
+    #Filtering by Country
+    points_with_country = points_with_country.query('gaul0_name != Brazil' )
+    points_with_country['gaul0_name'] = points_with_country['gaul0_name'].replace('Bolivia (Plurinational State of)', 'Bolivia')
     
     BUFFER_SIZE = 0.5
     
@@ -279,6 +288,8 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
 
     df_result = cluster_spatiotemporal(gdf_final_filtrado, spatial_km=1.0, temporal_days=15)
     df_oldest = df_result.sort_values('date').groupby('cluster').first().reset_index()
+    df_oldest = df_oldest.drop(columns=['geometry'])
+    df_oldest ['geometry'] = df_oldest.points_from_xy(gdf['longitude'], gdf['latitude'])
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     df_result.to_file(output_path)
