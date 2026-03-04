@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 17/02/2026
-Version 2.1.0
+Version 3.0.0
 @author: jvilla
 Test 2 avec donneés WC a bon resolution spatial
 Problems:
-    1)Puntos en Brasil zona ecuatorail, impossible para considerarlo parte de Andes tropicales (correction)
     2)Pasar puntos de polygonos a centroide nuevamente  (correction)
-Issues:
-    1) Bolivia doesn't have the correct name (correction)
-    2) make points geometry (correction)
 """
 
 from pathlib import Path
@@ -111,7 +107,8 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     df = pd.read_csv(file_path)
     print("df shape: ",df.shape)
 
-    df =df.sample(n=100000, random_state=45)
+    #df =df.sample(n=100000, random_state=45) #10% sample
+    df =df.sample(n=50000, random_state=54) #5% sample
     
     t = timer("Carga de datos", t)
     
@@ -146,9 +143,10 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     gdf = gdf.to_crs(countries.crs)
     
     points_with_country = gpd.sjoin(gdf, countries, how='left', predicate='within')
+
     
     #Filtering by Country
-    points_with_country = points_with_country.query('gaul0_name != Brazil' )
+    points_with_country = points_with_country.query('gaul0_name != "Brazil"' )
     points_with_country['gaul0_name'] = points_with_country['gaul0_name'].replace('Bolivia (Plurinational State of)', 'Bolivia')
     
     BUFFER_SIZE = 0.5
@@ -289,26 +287,26 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     df_result = cluster_spatiotemporal(gdf_final_filtrado, spatial_km=1.0, temporal_days=15)
     df_oldest = df_result.sort_values('date').groupby('cluster').first().reset_index()
     df_oldest = df_oldest.drop(columns=['geometry'])
-    df_oldest ['geometry'] = df_oldest.points_from_xy(gdf['longitude'], gdf['latitude'])
+    df_oldest ['geometry'] = gpd.points_from_xy(df_oldest['longitude'],df_oldest['latitude'])
+    gdf_oldest = gpd.GeoDataFrame(df_oldest, geometry='geometry', crs='EPSG:4326')
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    df_result.to_file(output_path)
+    gdf_oldest.to_file(output_path)
     
     
     print("Work Done!")
     print(f"\n{'─'*40}")
     print(f"  TOTAL: {timedelta(seconds=int(time.time() - t_total))}")
     print(f"{'─'*40}")
-    return df,df_result,gdf,final_stats,gdf_final_filtrado,df_oldest,points_buffered
-
+    return gdf_oldest
 
   except Exception as e:
     print(f"An error occurred: {e}")
     
 #Execution part  
-df,df_result,gdf,final_stats,gdf_final_filtrado,df_oldest,points_buffered=filt_csv(
+gdf_oldest=filt_csv(
     data_dir / 'fire_archive_M-C61_706555.csv',
     data_dir / 'Limits_countries/GAUL_2024_L1.shp',
     data_dir / 'copernicus_dem_andes/output/mosaico_andes_filtrado.tif',
     data_dir / 'copernicus_wc_andes_v2/output/mosaico_andes_filtrado.tif',
-    test_dir / 'AnomaliesThermiques_test2.shp')
+    test_dir / 'AnomaliesThermiques_test3_1.shp')
