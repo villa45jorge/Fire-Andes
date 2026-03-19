@@ -31,6 +31,17 @@ output_dir = data_dir / "outputs"
 processed_dir = base_dir / "data" / "processed"
 test_dir = base_dir / "test"
 
+'''CSV MODIS (raw)
+    ↓ muestra 50k
+    ↓ filtros temáticos + zona climática
+    ↓ join espacial con países → excluye Brasil
+    ↓ buffer 500m por punto
+    ↓ zonal_stats DEM + WorldClim (420 tiles)
+    ↓ filtro altitudinal > 2000m
+    ↓ clustering espacio-temporal (1km / 15 días)
+    ↓ primer evento por cluster
+    → Shapefile final_stats
+'''    
 # --- Función utilitaria ---
 def timer(label, start):
     elapsed = time.time() - start
