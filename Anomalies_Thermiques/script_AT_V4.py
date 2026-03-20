@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 04/03/2026
-Version 4.1.0
+Version 4.2.0
 @author: jvilla
 
+Modifications: 
+    -test 30%
+    -Cluster 32Gb 
 
 """
 
@@ -25,7 +28,7 @@ from sklearn.neighbors import BallTree
 import networkx as nx
 
 # Definir rutas
-base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data")
+base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data/MCD14ML")
 data_dir = base_dir / "1_input"
 processed_dir = base_dir / "2_processed"
 output_dir = base_dir / "3_outputs"
@@ -117,8 +120,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     df = pd.read_csv(file_path)
     print("df shape: ",df.shape)
 
-    #df =df.sample(n=100000, random_state=45) #10% sample
-    df =df.sample(n=50000, random_state=54) #5% sample
+    df =df.sample(n=1830000, random_state=54) #30% sample
     
     t = timer("Carga de datos", t)
     
