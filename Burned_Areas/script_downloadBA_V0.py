@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Sat Feb 28 12:11:28 2026
@@ -6,9 +5,8 @@ Created on Sat Feb 28 12:11:28 2026
 @author: villaramos
 
 Version 0.0.0
-Problems:
-    1) I need tokeep separatly the years in every image
-    2) Fix te loop pronblem
+Issue: Nettoyer et commenter
+    
 """
 
 import ee
