@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 20/03/2026
-Version 2.2.0
+Version 2.3.0
 @author: jvilla
 
 
@@ -308,7 +308,7 @@ def run_pipeline():
 
     with timer("carga elevación"):
         dem_data, elev_mask, dem_meta = load_elevation_mask(
-            data_dir / 'mosaico_andes_DEM.tif', roi_geom_list, ELEV_THRESHOLD
+            data_dir / 'mosaico_andes_DEM.tif', ROI_BBOX, ELEV_THRESHOLD 
         )
 
     with timer("búsqueda archivos BA"):
