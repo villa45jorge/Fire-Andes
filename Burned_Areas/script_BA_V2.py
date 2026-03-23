@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 20/03/2026
-Version 2.3.0
+Version 3.0.0
 @author: jvilla
 
 
@@ -308,7 +308,7 @@ def run_pipeline():
 
     with timer("carga elevación"):
         dem_data, elev_mask, dem_meta = load_elevation_mask(
-            data_dir / 'mosaico_andes_DEM.tif', ROI_BBOX, ELEV_THRESHOLD 
+            processed_dir / 'mosaico_andes_DEM_COG.tif', ROI_BBOX, ELEV_THRESHOLD 
         )
 
     with timer("búsqueda archivos BA"):
@@ -321,7 +321,7 @@ def run_pipeline():
 
     with timer("carga WorldCover"):
         wc_data, wc_transform = load_worldcover(
-            data_dir / 'mosaico_andes_WC.tif',
+            processed_dir / 'mosaico_andes_WC_COG.tif',
             roi_geom_list,
             roi_bbox=ROI_BBOX       # ← (-74, -19, -66, -11) para T1
         )
