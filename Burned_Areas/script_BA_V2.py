@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 20/03/2026
-Version 2.1.0
+Version 2.2.0
 @author: jvilla
 
 
@@ -77,23 +77,37 @@ def load_countries(path, adm0_codes, roi_geom):
 
 
 # ── 2. Máscara de elevación ────────────────────────────────────────────────────
-def load_elevation_mask(dem_path, roi_geom_list, threshold=2000):
-    with timer("load_elevation_mask: lectura y recorte DEM"):
+def load_elevation_mask(dem_path, roi_bbox, threshold=2000):
+    """
+    Usa windowed reading para leer solo los píxeles del ROI.
+    roi_bbox: (xmin, ymin, xmax, ymax)
+    """
+    from rasterio.windows import from_bounds
+
+    with timer("load_elevation_mask: lectura con window"):
         with rasterio.open(dem_path) as src:
-            dem_data, dem_transform = rasterio.mask.mask(
-                src, roi_geom_list, crop=True, filled=True, nodata=-9999
+            window = from_bounds(
+                left      = roi_bbox[0],
+                bottom    = roi_bbox[1],
+                right     = roi_bbox[2],
+                top       = roi_bbox[3],
+                transform = src.transform
             )
-            dem_meta = src.meta.copy()
+            dem_data     = src.read(1, window=window).astype(float)
+            dem_transform = src.window_transform(window)
+            dem_meta     = src.meta.copy()
+            dem_meta.update({
+                "height"    : dem_data.shape[0],
+                "width"     : dem_data.shape[1],
+                "transform" : dem_transform,
+                "dtype"     : "float32"
+            })
 
     with timer("load_elevation_mask: cálculo máscara"):
-        dem_data = dem_data[0].astype(float)
-        dem_data[dem_data == -9999] = np.nan
+        dem_data[dem_data == src.nodata] = np.nan
         elev_mask = dem_data >= threshold
-        dem_meta.update({"height": dem_data.shape[0], "width": dem_data.shape[1],
-                         "transform": dem_transform, "dtype": "float32"})
 
     return dem_data, elev_mask, dem_meta
-
 
 # ── 3. Carga WorldCover ────────────────────────────────────────────────────────
 def load_worldcover(wc_path, roi_geom_list, roi_bbox):
