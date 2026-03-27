@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 27/03/2026
-Version 4.0.0
+Version 4.1.0
 @author: jvilla
 
 
 MODIFICATIONS:
-    -test performing cluster calculs
-    -all data but 1 year
+    -test performing cluster calculs (temps)
 
 
 
@@ -249,14 +248,52 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
 
     if not all_features:
         return gpd.GeoDataFrame()
-
+    
     with timer("spatial join países"):
         gdf = gpd.GeoDataFrame(all_features, crs=ba_crs)
+    
+        # ── Intento 1: intersects (más tolerante que within) ──────────
         gdf = gdf.sjoin(
             countries_gdf[["gaul0_code", "gaul0_name", "geometry"]],
-            how="left", predicate="within"
+            how="left", predicate="intersects"
         ).drop(columns=["index_right"], errors="ignore")
-
+    
+        # ── Intento 2: los que siguen con NaN → join por centroide ────
+        mask_nan = gdf["gaul0_name"].isna()
+        if mask_nan.any():
+            print(f"    ⚠️  {mask_nan.sum()} features sin país — reintentando con centroide")
+    
+            # Crear GeoDataFrame temporal con centroides
+            gdf_centroids = gdf[mask_nan].copy()
+            gdf_centroids["geometry"] = gdf_centroids.geometry.centroid
+    
+            resultado = gdf_centroids[["geometry"]].sjoin(
+                countries_gdf[["gaul0_code", "gaul0_name", "geometry"]],
+                how="left", predicate="within"
+            ).drop(columns=["index_right"], errors="ignore")
+    
+            # Rellenar los NaN con los valores del join por centroide
+            gdf.loc[mask_nan, "gaul0_code_right"] = resultado["gaul0_code"].values
+            gdf.loc[mask_nan, "gaul0_name"]       = resultado["gaul0_name"].values
+    
+        # ── Intento 3: los que aún quedan NaN → nearest neighbor ──────
+        mask_nan2 = gdf["gaul0_name"].isna()
+        if mask_nan2.any():
+            print(f"    ⚠️  {mask_nan2.sum()} features aún sin país — usando nearest")
+    
+            gdf_nearest = gdf[mask_nan2].copy()
+            gdf_nearest["geometry"] = gdf_nearest.geometry.centroid
+    
+            resultado2 = gdf_nearest[["geometry"]].sjoin_nearest(
+                countries_gdf[["gaul0_code", "gaul0_name", "geometry"]],
+                how="left"
+            ).drop(columns=["index_right"], errors="ignore")
+    
+            gdf.loc[mask_nan2, "gaul0_code_right"] = resultado2["gaul0_code"].values
+            gdf.loc[mask_nan2, "gaul0_name"]       = resultado2["gaul0_name"].values
+    
+        nan_restantes = gdf["gaul0_name"].isna().sum()
+        print(f"    ✅ NaN restantes tras 3 intentos: {nan_restantes}")
     total_elapsed = time.perf_counter() - pipeline_start
     print(f"  🕐 Tiempo total process_burned_areas: {total_elapsed:.2f}s")
     return gdf
