@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 20/03/2026
-Version 3.0.0
+Modified on 27/03/2026
+Version 4.0.0
 @author: jvilla
 
 
 MODIFICATIONS:
-
+    -test performing cluster calculs
+    -all data but 1 year
 
 
 
@@ -28,7 +29,8 @@ import time
 from contextlib import contextmanager
 
 # Definir rutas
-base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data/MCD64A1")
+#base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data/MCD64A1")
+base_dir = Path("/media/villaramos/Donnees/MesProgrammes/data/MCD64A1")
 data_dir = base_dir / "1_input"
 processed_dir = base_dir / "2_processed"
 output_dir = base_dir / "3_output"
@@ -54,8 +56,8 @@ def timer(label):
         elapsed = time.perf_counter() - start
         print(f"  ✅ [{label}] completado en {elapsed:.2f}s")
 
-ROI_BBOX        = (-74.0, -19.0, -66.0, -11.0)
-YEARS_TEST      = [2003,2005,2012,2015,2020, 2024]
+ROI_BBOX        = (-80.0, -20.0, -60.0, 1.0)
+YEARS_TEST      = [2012]
 ELEV_THRESHOLD  = 2000
 COUNTRIES_ADM0  = [178, 184, 185, 190, 207]
 
@@ -77,76 +79,49 @@ def load_countries(path, adm0_codes, roi_geom):
 
 
 # ── 2. Máscara de elevación ────────────────────────────────────────────────────
-def load_elevation_mask(dem_path, roi_bbox, threshold=2000):
+def load_elevation_mask(dem_path, target_shape, target_transform, target_crs, threshold=2000):
     """
-    Usa windowed reading para leer solo los píxeles del ROI.
-    roi_bbox: (xmin, ymin, xmax, ymax)
+    Reprojecta el DEM directamente al grid del BA usando GDAL,
+    sin cargar el raster completo en memoria.
     """
-    from rasterio.windows import from_bounds
+    with timer("load_elevation_mask: reproject al grid BA"):
+        dem_r = np.empty(target_shape, dtype=np.float32)
 
-    with timer("load_elevation_mask: lectura con window"):
         with rasterio.open(dem_path) as src:
-            window = from_bounds(
-                left      = roi_bbox[0],
-                bottom    = roi_bbox[1],
-                right     = roi_bbox[2],
-                top       = roi_bbox[3],
-                transform = src.transform
+            rasterio.warp.reproject(
+                source=rasterio.band(src, 1),   # ← lectura lazy por GDAL
+                destination=dem_r,
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=target_transform,
+                dst_crs=target_crs,
+                resampling=rasterio.warp.Resampling.bilinear,
+                src_nodata=src.nodata,
+                dst_nodata=np.nan
             )
-            dem_data     = src.read(1, window=window).astype(float)
-            dem_transform = src.window_transform(window)
-            dem_meta     = src.meta.copy()
-            dem_meta.update({
-                "height"    : dem_data.shape[0],
-                "width"     : dem_data.shape[1],
-                "transform" : dem_transform,
-                "dtype"     : "float32"
-            })
 
     with timer("load_elevation_mask: cálculo máscara"):
-        dem_data[dem_data == src.nodata] = np.nan
-        elev_mask = dem_data >= threshold
+        elev_mask = dem_r >= threshold   # NaN >= 2000 → False ✓
 
-    return dem_data, elev_mask, dem_meta
-
+    return dem_r, elev_mask
 # ── 3. Carga WorldCover ────────────────────────────────────────────────────────
-def load_worldcover(wc_path, roi_geom_list, roi_bbox):
-    """
-    Usa windowed reading para leer solo los píxeles del ROI,
-    sin cargar el raster completo en memoria.
-    roi_bbox: (xmin, ymin, xmax, ymax)
-    """
-    from rasterio.windows import from_bounds
+def load_worldcover(wc_path, target_shape, target_transform, target_crs):
+    with timer("load_worldcover: reproject al grid BA"):
+        wc_r = np.empty(target_shape, dtype=np.uint8)
 
-    with timer("load_worldcover: lectura con window"):
         with rasterio.open(wc_path) as src:
-            window = from_bounds(
-                left   = roi_bbox[0],
-                bottom = roi_bbox[1],
-                right  = roi_bbox[2],
-                top    = roi_bbox[3],
-                transform = src.transform
+            rasterio.warp.reproject(
+                source=rasterio.band(src, 1),
+                destination=wc_r,
+                src_transform=src.transform,
+                src_crs=src.crs,
+                dst_transform=target_transform,
+                dst_crs=target_crs,
+                resampling=rasterio.warp.Resampling.nearest,
+                src_nodata=src.nodata,
+                dst_nodata=0
             )
-            wc_data     = src.read(1, window=window).astype(np.uint8)
-            wc_transform = src.window_transform(window)
-
-    return wc_data, wc_transform
-
-
-def resample_worldcover(wc_data, wc_src_transform, target_shape, target_transform):
-    """Reproyecta el array ya cargado a la resolución del BA."""
-    with timer("load_worldcover: reproyección"):
-        wc_resampled = np.empty(target_shape, dtype=np.uint8)
-        rasterio.warp.reproject(
-            source=wc_data,
-            destination=wc_resampled,
-            src_transform=wc_src_transform,   # ← transform ORIGINAL del WC
-            src_crs="EPSG:4326",
-            dst_transform=target_transform,
-            dst_crs="EPSG:4326",
-            resampling=rasterio.warp.Resampling.nearest
-        )
-    return wc_resampled
+    return wc_r
 
 
 # ── 4. Rasterizar países ───────────────────────────────────────────────────────
@@ -168,7 +143,7 @@ def rasterize_countries(countries_gdf, target_shape, target_transform, target_cr
 
 # ── 5. Procesamiento principal por año ────────────────────────────────────────
 def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
-                          wc_data, wc_transform,          # ← array ya cargado
+                          wc_data,
                           countries_gdf, roi_geom_list):
     all_features = []
     _dem_cache = {}   # {(h, w): (elev_mask_r, dem_r)}
@@ -194,28 +169,22 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
             ba_meta.update({"height": h, "width": w, "transform": ba_transform})
 
         h, w = ba_data.shape
-        with timer(f"{year}: resample DEM"):
-                    if (h, w) not in _dem_cache:
-                        print(f"    → DEM resample necesario para shape {(h,w)}")
-                        if elev_mask.shape != (h, w):
-                            from skimage.transform import resize as sk_resize
-                            elev_mask_r = sk_resize(elev_mask.astype(float), (h, w), order=0).astype(bool)
-                            dem_r = sk_resize(dem_data, (h, w), order=1)
-                        else:
-                            elev_mask_r = elev_mask
-                            dem_r = dem_data
-                        _dem_cache[(h, w)] = (elev_mask_r, dem_r)
-                    else:
-                        print(f"    → DEM resample desde caché para shape {(h,w)}")
-                        elev_mask_r, dem_r = _dem_cache[(h, w)]
+        
+        elev_mask_r = elev_mask
+        dem_r       = dem_data
+        
+        if elev_mask_r.shape != (h, w):
+            print(f"    ⚠️  Shape mismatch DEM {elev_mask_r.shape} vs BA {(h,w)}")
+            continue
+
 
         valid = (ba_data > 0) & elev_mask_r
         if not valid.any():
             print(f"    ⚠️  Sin áreas quemadas válidas en {year}")
             continue
 
-        with timer(f"{year}: carga WorldCover"):
-            wc_arr = resample_worldcover(wc_data, wc_transform, (h, w), ba_transform)
+
+        wc_arr = wc_data
 
         with timer(f"{year}: rasterización países"):
             cntry_arr = rasterize_countries(
@@ -306,11 +275,7 @@ def run_pipeline():
         countries_gdf = load_countries(data_dir / 'GAUL_2024_L1.shp',
                                        COUNTRIES_ADM0, roi_geom)
 
-    with timer("carga elevación"):
-        dem_data, elev_mask, dem_meta = load_elevation_mask(
-            processed_dir / 'mosaico_andes_DEM_COG.tif', ROI_BBOX, ELEV_THRESHOLD 
-        )
-
+    # ── 1. Buscar archivos BA primero ──────────────────────────────
     with timer("búsqueda archivos BA"):
         ba_files_by_year = {
             year: list((data_dir/'mosaics_BA').glob(f"*{year}*.tif"))[0]
@@ -319,35 +284,43 @@ def run_pipeline():
         }
     print(f"  📂 Archivos BA encontrados: {list(ba_files_by_year.keys())}")
 
-    with timer("carga WorldCover"):
-        wc_data, wc_transform = load_worldcover(
-            processed_dir / 'mosaico_andes_WC_COG.tif',
-            roi_geom_list,
-            roi_bbox=ROI_BBOX       # ← (-74, -19, -66, -11) para T1
+    # ── 2. Leer grid de referencia del primer BA ───────────────────
+    with timer("lectura grid de referencia BA"):
+        ref_ba_path = list(ba_files_by_year.values())[0]
+        with rasterio.open(ref_ba_path) as src:
+            ba_ref_data, ba_ref_transform = rasterio.mask.mask(
+                src, roi_geom_list, crop=True, filled=True, nodata=0
+            )
+            ba_ref_crs = src.crs
+        ref_shape = (ba_ref_data.shape[1], ba_ref_data.shape[2])
+        print(f"  📐 Grid de referencia: shape={ref_shape}, crs={ba_ref_crs}")
+
+    # ── 3. DEM y WorldCover ya al tamaño del BA ────────────────────
+    with timer("carga elevación"):
+        dem_data, elev_mask = load_elevation_mask(
+            processed_dir / 'mosaico_andes_DEM_COG.tif',
+            ref_shape,
+            ba_ref_transform,
+            ba_ref_crs,
+            ELEV_THRESHOLD
         )
 
+    with timer("carga WorldCover"):
+        wc_data = load_worldcover(
+            processed_dir / 'mosaico_andes_WC_COG.tif',
+            ref_shape,
+            ba_ref_transform,
+            ba_ref_crs
+        )
+
+    # ── 4. Procesamiento ───────────────────────────────────────────
     with timer("procesamiento áreas quemadas"):
         gdf_final = process_burned_areas(
             ba_files_by_year, dem_data, elev_mask,
-            wc_data, wc_transform,                     # ← pasar array
+            wc_data,                    # ← sin wc_transform
             countries_gdf, roi_geom_list
         )
-
-    if gdf_final.empty:
-        print("⚠️  Sin resultados. Verifica los datos de entrada.")
-        return
-
-    with timer("escritura GeoPackage"):
-        test_dir.mkdir(parents=True, exist_ok=True)
-        gdf_final.to_file(test_dir / "burned_areas_final_0.gpkg", driver="GPKG")
-
-    total = time.perf_counter() - pipeline_start
-    print(f"\n{'═'*60}")
-    print(f"✅ Pipeline completo — {len(gdf_final)} features guardados")
-    print(f"🕐 Tiempo total pipeline: {total:.2f}s")
-    print(f"{'═'*60}\n")
-    return gdf_final
-
+    # ... resto igual
 
 if __name__ == "__main__":
     gdf = run_pipeline()
