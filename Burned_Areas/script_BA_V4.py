@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 27/03/2026
-Version 4.1.0
+Version 4.2.0
 @author: jvilla
 
 
@@ -28,8 +28,8 @@ import time
 from contextlib import contextmanager
 
 # Definir rutas
-#base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data/MCD64A1")
-base_dir = Path("/media/villaramos/Donnees/MesProgrammes/data/MCD64A1")
+base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data/MCD64A1")
+#base_dir = Path("/media/villaramos/Donnees/MesProgrammes/data/MCD64A1")
 data_dir = base_dir / "1_input"
 processed_dir = base_dir / "2_processed"
 output_dir = base_dir / "3_output"
@@ -56,7 +56,7 @@ def timer(label):
         print(f"  ✅ [{label}] completado en {elapsed:.2f}s")
 
 ROI_BBOX        = (-80.0, -20.0, -60.0, 1.0)
-YEARS_TEST      = [2012]
+YEARS_TEST      = [2003,2005,2012,2015,2020, 2024]
 ELEV_THRESHOLD  = 2000
 COUNTRIES_ADM0  = [178, 184, 185, 190, 207]
 
@@ -361,7 +361,7 @@ def run_pipeline():
 
     with timer("escritura GeoPackage"):
         test_dir.mkdir(parents=True, exist_ok=True)
-        gdf_final.to_file(test_dir / "burned_areas_final_2.gpkg", driver="GPKG")
+        gdf_final.to_file(test_dir / "burned_areas_final_0.gpkg", driver="GPKG")
 
     total = time.perf_counter() - pipeline_start
     print(f"\n{'═'*60}")
