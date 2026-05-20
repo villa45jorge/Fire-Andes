@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 04/03/2026
-Version 4.3.0
+Version 4.3.1
 @author: jvilla
 
 Modifications: 
@@ -35,7 +35,7 @@ output_dir = base_dir / "3_outputs"
 test_dir = base_dir / "4_test"
 
 '''CSV MODIS (raw)
-    ↓ muestra 50k
+    ↓ all data
     ↓ filtros temáticos + zona climática
     ↓ join espacial con países → excluye Brasil
     ↓ buffer 500m por punto
@@ -119,8 +119,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     t = time.time()
     df = pd.read_csv(file_path)
     print("df shape: ",df.shape)
-
-    #df =df.sample(n=1830000, random_state=54) #30% sample
     
     t = timer("Carga de datos", t)
     
@@ -160,14 +158,8 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     gdf_country = gdf_country.query('gaul0_name != "Brazil"' )
     gdf_country['gaul0_name'] = gdf_country['gaul0_name'].replace('Bolivia (Plurinational State of)', 'Bolivia')
     
-    # 500m ÷ 111,320 m/° ≈ 0.0045° - marge a 0.05°
     BUFFER_SIZE_DEG = 0.005  # ~500m, captura exactamente el pixel de 1km (±500m desde el centroide)
     
-     # Crear buffers cuadrados de 1°x1° directamente
-    #def create_square_buffer(point, size=BUFFER_SIZE):
-    #    """Crea un cuadrado de (size*2)° x (size*2)° alrededor del punto"""
-    #    x, y = point.x, point.y
-    #    return box(x - size, y - size, x + size, y + size)
         
     points_buffered = gdf_country.copy()
     points_buffered['geometry'] = gdf_country.geometry.to_crs('EPSG:3857').buffer(500).to_crs('EPSG:4326')
@@ -192,7 +184,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
     all_results = []
     
-    #CRS_PROJ = "EPSG:3857"  # PseudoMercator
     centroids = gdf_country.geometry
     
     with rasterio.open(DEM) as src, rasterio.open(WC) as src2:
@@ -201,10 +192,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
         for t_idx, tile_geom in enumerate(tqdm(tiles, desc="Procesando tiles")):
     
             t_tile = time.time()
-            
-            #CRS_PROJ = "EPSG:3857"  # PseudoMercator
-            
-            #centroids = points_buffered.geometry.to_crs(CRS_PROJ).centroid.to_crs(points_buffered.crs)
             
             points_in_tile = points_buffered[
                 centroids.within(tile_geom)
