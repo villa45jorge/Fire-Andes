@@ -4,16 +4,12 @@ import os
 from pathlib import Path
 import math
 
-ee.Initialize()
+ee.Authenticate()
+
+ee.Initialize(project="ee-villa45ramos")
+
 
 mapbiomas = ee.Image('projects/mapbiomas-public/assets/peru/collection3/mapbiomas_peru_collection3_integration_v1')
-
-# Seleccionar solo años 2000-2024
-years = list(range(2000, 2025))  # 2000 a 2024 inclusive
-bands_to_keep = [f'classification_{year}' for year in years]
-
-print(f"Seleccionando {len(bands_to_keep)} bandas: {years[0]} a {years[-1]}")
-mapbiomas = mapbiomas.select(bands_to_keep)
 
 def download_tile(lat_min, lat_max, lon_min, lon_max, tile_name, output_dir, scale=10):
     """Descarga una tile individual"""
@@ -61,13 +57,17 @@ def download_tile(lat_min, lat_max, lon_min, lon_max, tile_name, output_dir, sca
             print(f"  ✗ {tile_name}: {error_msg[:60]}")
         return None
 
-def download_region_with_fixed_tiles(region_name, bounds, output_dir, tile_size=1.0, scale=30):
+def download_region_with_fixed_tiles(region_name, bounds, output_dir, tile_size=0.1, scale=10):
     """
-    Descarga una región con tiles de tamaño FIJO
-    
+    Descarga una región con tiles de tamaño FIJO.
+
     Args:
-        tile_size: Tamaño de cada tile en grados (1.0° = ~111km)
-                   1.0° a 30m = ~3700 píxeles = ~15-40 MB por tile
+        region_name : str   — nombre de la subregión (usado para el subdirectorio y nombres de archivo)
+        bounds      : list  — [lon_min, lat_min, lon_max, lat_max]
+        output_dir  : str   — directorio raíz de salida
+        tile_size   : float — tamaño de cada tile en grados (0.1° ≈ 11 km)
+                              a 10 m de resolución: ~1100 píxeles por lado, ~2-5 MB por tile (1 banda)
+        scale       : int   — resolución espacial en metros para la descarga desde GEE
     """
     lon_min, lat_min, lon_max, lat_max = bounds
     
@@ -140,26 +140,24 @@ def download_region_with_fixed_tiles(region_name, bounds, output_dir, tile_size=
 # CONFIGURACIÓN PRINCIPAL
 # ============================================================================
 
-output_dir = './biomas_peru_sol/'
+output_dir = '/media/villaramos/Donnees/MesProgrammes/MCD14ML/data/raw/biomas_peru_sol/'
 Path(output_dir).mkdir(parents=True, exist_ok=True)
 
 # Regiones a descargar
 regions = {
-    #'Colombia': [-79, -4, -66, 13],
-    #'Ecuador': [-81, -5, -75, 2],
+
     'Peru_Norte': [-80, -10, -62, 0],
     'Peru_Centro': [-80, -15, -62, -10],
     'Peru_Sur': [-80, -19, -62, -15],
-    #'Bolivia_Norte': [-70, -13, -61, -9],
-    #'Bolivia_Sur': [-70, -23, -62, -13]
+
 }
 
 print("="*70)
-print("DESCARGA COPERNICUS WorldCover - REGIÓN ANDES")
-print("MODO: TILES FIJAS DE 0.5°x0.5°")
+print("DESCARGA MapBiomas Perú Collection 3 - REGIÓN ANDES")
+print("MODO: TILES FIJAS DE 0.05°x0.05° — todas las bandas (1985-2024)")
 print("="*70)
-print("\nNOTA: Tiles de 0.01° ")
-print("Total estimado: +~200-300 tiles, ~5-10 GB\n")
+print("\nNOTA: Tiles de 0.05° a 10 m ≈ 550 píxeles/lado, ~1-2 MB por tile")
+print("Total estimado: ~12 800 tiles (3 subregiones Perú), ~15-25 GB\n")
 
 # Preguntar si continuar
 respuesta = input("¿Continuar con la descarga? (s/n): ")
@@ -176,12 +174,12 @@ for i, (region_name, bounds) in enumerate(regions.items(), 1):
     print(f"# REGIÓN {i}/{len(regions)}: {region_name}")
     print(f"{'#'*70}")
     
-    # Usar tiles de 1.0 grado (ajusta si aún da error)
+    # Tiles de 0.05° a 10 m: ~550 px/lado, ~1-2 MB por tile
     downloaded, failed = download_region_with_fixed_tiles(
         region_name, 
         bounds, 
         output_dir, 
-        tile_size=0.05,  # 1 grado = ~15-40 MB
+        tile_size=0.05,
         scale=10
     )
     
@@ -213,6 +211,6 @@ if all_downloaded:
                 print(f"  {region_name:20s}: {len(region_files):3d} tiles, {region_size:8.1f} MB")
 
 if all_failed:
-    print(f"\n⚠️  Si hay tiles fallidas, prueba reducir tile_size a 0.5°")
+    print(f"\n⚠️  Si hay tiles fallidas, prueba reducir tile_size a 0.05°")
 
 print("="*70)
