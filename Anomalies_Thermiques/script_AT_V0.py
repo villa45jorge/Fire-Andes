@@ -1,30 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 17/02/2026
-Version 2.0.0
+Modified on 01/07/2026
+Version 2.1.0
 @author: jvilla
 """
 
 import pandas as pd
 import numpy as np
-#import matplotlib.pyplot as plt
 from rasterstats import zonal_stats
-#from scipy import stats as sp_stats
 import geopandas as gpd
 from shapely.geometry import box
 import os
 from tqdm import tqdm
 from datetime import timedelta
 import time
-#import math
 import rasterio
 from rasterio.mask import mask as rio_mask
 import gc
-
-
-
-
-
 
 # --- Función utilitaria ---
 def timer(label, start):
@@ -57,15 +49,10 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
   try:
       
     t_total = time.time()
-    #Get the file path
-    #file_name = Path(file_path).stem
     print("Starting work ...")
     #Read the CSV file
     t = time.time()
-    df = pd.read_csv(file_path)
-    
-    #df =df.sample(n=100000, random_state=45)
-    
+    df = pd.read_csv(file_path)    
     t = timer("Carga de datos", t)
     
     print("Dataframe taille:",df.shape)
@@ -90,9 +77,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     t = timer("Filtering DataFrame", t)
 
 
-    #Random Test
-    #filt_df=filt_df.sample(n=100000, random_state=45)
-    
     gdf = gpd.GeoDataFrame(
         filt_df, 
         geometry=gpd.points_from_xy(filt_df.longitude, filt_df.latitude),
@@ -116,13 +100,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print("Buffering ok ...")
     t = timer("Buffering DataFrame", t)
 
-    #points_sorted = points_buffered.copy()
-    #points_sorted['_lat'] = points_sorted.geometry.centroid.y
-    #points_sorted['_lon'] = points_sorted.geometry.centroid.x
-    #points_sorted = points_sorted.sort_values(['_lat', '_lon']).reset_index(drop=True)
-    #points_sorted = points_sorted.drop(columns=['_lat', '_lon'])
-    
-    #print("Puntos ordenados espacialmente ✓")
     tile_size = 1  # grados
     x_min, y_min, x_max, y_max = -80, -20, -60, 1
     
@@ -138,17 +115,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
             tiles.append(box(x, y, x + tile_size, y + tile_size))
     
     print(f"N° de tiles ({tile_size}°x{tile_size}°): {len(tiles)}")
-    
-    
-    #total_filas = len(points_sorted)  # ~900,000
-    #chunk_size  = 10_000
-    #n_chunks    = math.ceil(total_filas / chunk_size)
-    #n_chunks = math.ceil(len(points_buffered) / chunk_size)
-    #print(f"Total filas  : {total_filas:,}")
-    #print(f"Chunk size   : {chunk_size:,}")
-    #print(f"N° de chunks : {n_chunks}")
-    
-    #indices = range(0, len(points_sorted), chunk_size)
+
     with rasterio.open(DEM) as src:
         total_area  = (x_max - x_min) * (y_max - y_min)  # grados²
         tile_area   = tile_size ** 2
@@ -159,7 +126,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
             t_tile = time.time()
             
-            #chunk = points_sorted.iloc[start : start + chunk_size].reset_index(drop=True)
             points_in_tile = points_buffered[
                 points_buffered.intersects(tile_geom)
             ].reset_index(drop=True)
@@ -179,15 +145,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
             except Exception as e:
                 print(f"\n  ⚠ Tile {t_idx+1} error al recortar DEM: {e}")
                 continue    
-            
-            # Extent del chunk actual
-            #bounds  = chunk.total_bounds  # (minx, miny, maxx, maxy)
-            #bbox    = box(*bounds)
-            
-            # Leer solo la porción del DEM que cubre este chunk
-            #out_image, out_transform = rio_mask(src, [bbox], crop=True)
-            #dem_chunk  = out_image[0]
-    
+
             # Extraer estadísticas del raster
             stats = zonal_stats(
                 points_in_tile,
@@ -216,18 +174,14 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print("Stast 1 part ok ...")
     t = timer("Stats Part one", t)
 
-
-
     umbral = 2000
     result_filtrado = result[result['dem_median'] > umbral]
     
     print("Last Filter ok ...")
-
     
     stats1 = zonal_stats(
         result_filtrado,
         WC,
-        #categorical=True,      # trata los pixeles como categorías
         stats=['majority'],    # majority = moda
         prefix='wc_',
         nodata=-9999,
@@ -242,16 +196,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     print("Stast 2 part ok ...")
     t = timer("Stats Part two", t)
 
-
-    
-    #fig, ax = plt.subplots(figsize=(15, 12))
-    #countries.plot(ax=ax, color='lightgray', edgecolor='black', linewidth=0.8)
-    #gdf.plot(ax=ax, color='red', markersize=5, alpha=0.6)
-    # Zoom en Andes
-    #ax.set_xlim(-82, -63)
-    #ax.set_ylim(-23, 13)
-    #plt.title("Países")
-    #plt.show()
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     gdf.to_file(output_path)
     
@@ -266,9 +210,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
   except Exception as e:
     print(f"An error occurred: {e}")
     
-    
-    
-
 gdf_final=filt_csv('D:/MesProgrammes/MCD14ML/fire_archive_M-C61_706555.csv',
                        'D:/MesProgrammes/Limits_countries/GAUL_2024_L1.shp',
                        'D:/MesProgrammes/MCD14ML/copernicus_dem_andes/output/mosaico_andes_filtrado.tif',
