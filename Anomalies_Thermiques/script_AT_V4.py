@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Modified on 04/03/2026
-Version 4.3.1
+Version 4.4.0
 @author: jvilla
 
 Modifications: 
@@ -126,7 +126,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
     countries = gpd.read_file(country_shape)
     countries = countries[['gaul0_name','geometry']]
-    
 
     #Filter CSV file
     df=df.query('confidence >= 80 and ' '(`type` == 0 or `type` == 2) and '
@@ -159,7 +158,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     gdf_country['gaul0_name'] = gdf_country['gaul0_name'].replace('Bolivia (Plurinational State of)', 'Bolivia')
     
     BUFFER_SIZE_DEG = 0.005  # ~500m, captura exactamente el pixel de 1km (±500m desde el centroide)
-    
         
     points_buffered = gdf_country.copy()
     points_buffered['geometry'] = gdf_country.geometry.to_crs('EPSG:3857').buffer(500).to_crs('EPSG:4326')
@@ -291,7 +289,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     gdf_result.to_file(output_path)
-    
     
     print("Work Done!")
     print(f"\n{'─'*40}")
