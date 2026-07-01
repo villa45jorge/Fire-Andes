@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 27/03/2026
-Version 4.0.0
+Modified on 01/07/2026
+Version 4.1.0
 @author: jvilla
-
 
 MODIFICATIONS:
     -test performing cluster calculs
     -all data but 1 year
-
-
-
 """
 
 import os
@@ -29,7 +25,6 @@ import time
 from contextlib import contextmanager
 
 # Definir rutas
-#base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data/MCD64A1")
 base_dir = Path("/media/villaramos/Donnees/MesProgrammes/data/MCD64A1")
 data_dir = base_dir / "1_input"
 processed_dir = base_dir / "2_processed"
@@ -44,17 +39,16 @@ test_dir = base_dir / "4_test"
     → Shapefile final_stats
 '''   
 
-
 @contextmanager
 def timer(label):
     """Context manager para medir tiempos de ejecución."""
     start = time.perf_counter()
-    print(f"  ⏱  [{label}] iniciando...")
+    print(f"[{label}] iniciando...")
     try:
         yield
     finally:
         elapsed = time.perf_counter() - start
-        print(f"  ✅ [{label}] completado en {elapsed:.2f}s")
+        print(f"[{label}] completado en {elapsed:.2f}s")
 
 ROI_BBOX        = (-80.0, -20.0, -60.0, 1.0)
 YEARS_TEST      = [2012]
@@ -104,6 +98,7 @@ def load_elevation_mask(dem_path, target_shape, target_transform, target_crs, th
         elev_mask = dem_r >= threshold   # NaN >= 2000 → False ✓
 
     return dem_r, elev_mask
+
 # ── 3. Carga WorldCover ────────────────────────────────────────────────────────
 def load_worldcover(wc_path, target_shape, target_transform, target_crs):
     with timer("load_worldcover: reproject al grid BA"):
@@ -123,7 +118,6 @@ def load_worldcover(wc_path, target_shape, target_transform, target_crs):
             )
     return wc_r
 
-
 # ── 4. Rasterizar países ───────────────────────────────────────────────────────
 def rasterize_countries(countries_gdf, target_shape, target_transform, target_crs):
     with timer("rasterize_countries"):
@@ -140,7 +134,6 @@ def rasterize_countries(countries_gdf, target_shape, target_transform, target_cr
         )
     return country_raster
 
-
 # ── 5. Procesamiento principal por año ────────────────────────────────────────
 def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
                           wc_data,
@@ -153,7 +146,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
     for year, ba_path in ba_files_by_year.items():
         year_start = time.perf_counter()
         print(f"\n{'─'*60}")
-        print(f"  📅 Procesando año {year}: {ba_path.name}")
+        print(f"Procesando año {year}: {ba_path.name}")
         
         
         with timer(f"{year}: lectura BA"):
@@ -174,13 +167,13 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
         dem_r       = dem_data
         
         if elev_mask_r.shape != (h, w):
-            print(f"    ⚠️  Shape mismatch DEM {elev_mask_r.shape} vs BA {(h,w)}")
+            print(f"Shape mismatch DEM {elev_mask_r.shape} vs BA {(h,w)}")
             continue
 
 
         valid = (ba_data > 0) & elev_mask_r
         if not valid.any():
-            print(f"    ⚠️  Sin áreas quemadas válidas en {year}")
+            print(f"Sin áreas quemadas válidas en {year}")
             continue
 
 
@@ -194,7 +187,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
         with timer(f"{year}: etiquetado eventos (label)"):
             structure = np.ones((3, 3), dtype=int)
             labeled_arr, num_events = ndimage.label(valid, structure=structure)
-        print(f"    🔥 Eventos detectados: {num_events}")
+        print(f"Eventos detectados: {num_events}")
 
         with timer(f"{year}: zonal stats ({num_events} eventos)"):
             for event_id in range(1, num_events + 1):
@@ -245,7 +238,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
                 })
 
         year_elapsed = time.perf_counter() - year_start
-        print(f"  🏁 Año {year} finalizado en {year_elapsed:.2f}s")
+        print(f"Año {year} finalizado en {year_elapsed:.2f}s")
 
     print(f"\n{'═'*60}")
 
@@ -260,7 +253,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
         ).drop(columns=["index_right"], errors="ignore")
 
     total_elapsed = time.perf_counter() - pipeline_start
-    print(f"  🕐 Tiempo total process_burned_areas: {total_elapsed:.2f}s")
+    print(f"Tiempo total process_burned_areas: {total_elapsed:.2f}s")
     return gdf
 
 
@@ -268,7 +261,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
 def run_pipeline():
     pipeline_start = time.perf_counter()
     print(f"\n{'═'*60}")
-    print("🚀 Iniciando pipeline")
+    print("Iniciando pipeline")
     print(f"{'═'*60}")
 
     with timer("carga países"):
@@ -282,7 +275,7 @@ def run_pipeline():
             for year in YEARS_TEST
             if list((data_dir/'mosaics_BA').glob(f"*{year}*.tif"))
         }
-    print(f"  📂 Archivos BA encontrados: {list(ba_files_by_year.keys())}")
+    print(f"Archivos BA encontrados: {list(ba_files_by_year.keys())}")
 
     # ── 2. Leer grid de referencia del primer BA ───────────────────
     with timer("lectura grid de referencia BA"):
@@ -293,7 +286,7 @@ def run_pipeline():
             )
             ba_ref_crs = src.crs
         ref_shape = (ba_ref_data.shape[1], ba_ref_data.shape[2])
-        print(f"  📐 Grid de referencia: shape={ref_shape}, crs={ba_ref_crs}")
+        print(f"Grid de referencia: shape={ref_shape}, crs={ba_ref_crs}")
 
     # ── 3. DEM y WorldCover ya al tamaño del BA ────────────────────
     with timer("carga elevación"):
@@ -320,7 +313,6 @@ def run_pipeline():
             wc_data,                    # ← sin wc_transform
             countries_gdf, roi_geom_list
         )
-    # ... resto igual
 
 if __name__ == "__main__":
     gdf = run_pipeline()
