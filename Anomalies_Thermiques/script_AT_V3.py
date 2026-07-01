@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 04/03/2026
-Version 3.2.0
+Modified on 01/07/2026
+Version 3.3.0
 @author: jvilla
-
-
 """
 
 from pathlib import Path
@@ -127,7 +125,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     countries = gpd.read_file(country_shape)
     countries = countries[['gaul0_name','geometry']]
     
-
     #Filter CSV file
     df=df.query('confidence >= 80 and ' '(`type` == 0 or `type` == 2) and '
     'latitude <= 1 and latitude >= -20 and ' 'longitude <= -60 and longitude >= -80')[['latitude', 'longitude', 'acq_date', 'acq_time','satellite','confidence', 'type']]
@@ -149,9 +146,7 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
         df, 
         geometry=gpd.points_from_xy(df.longitude, df.latitude),
         crs='EPSG:4326')
-    
-    #gdf = gdf.to_crs(countries.crs)
-    
+        
     gdf_country = gpd.sjoin(gdf, countries, how='left', predicate='within')
     
     #Filtering by Country
@@ -160,12 +155,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
     # 500m ÷ 111,320 m/° ≈ 0.0045° - marge a 0.05°
     BUFFER_SIZE_DEG = 0.005  # ~500m, captura exactamente el pixel de 1km (±500m desde el centroide)
-    
-     # Crear buffers cuadrados de 1°x1° directamente
-    #def create_square_buffer(point, size=BUFFER_SIZE):
-    #    """Crea un cuadrado de (size*2)° x (size*2)° alrededor del punto"""
-    #    x, y = point.x, point.y
-    #    return box(x - size, y - size, x + size, y + size)
         
     points_buffered = gdf_country.copy()
     points_buffered['geometry'] = gdf_country.geometry.to_crs('EPSG:3857').buffer(500).to_crs('EPSG:4326')
@@ -190,7 +179,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     
     all_results = []
     
-    #CRS_PROJ = "EPSG:3857"  # PseudoMercator
     centroids = gdf_country.geometry
     
     with rasterio.open(DEM) as src, rasterio.open(WC) as src2:
@@ -199,10 +187,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
         for t_idx, tile_geom in enumerate(tqdm(tiles, desc="Procesando tiles")):
     
             t_tile = time.time()
-            
-            #CRS_PROJ = "EPSG:3857"  # PseudoMercator
-            
-            #centroids = points_buffered.geometry.to_crs(CRS_PROJ).centroid.to_crs(points_buffered.crs)
             
             points_in_tile = points_buffered[
                 centroids.within(tile_geom)
@@ -302,7 +286,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     gdf_result.to_file(output_path)
-    
     
     print("Work Done!")
     print(f"\n{'─'*40}")
