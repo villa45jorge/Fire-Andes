@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 20/03/2026
-Version 0.1.0
+Modified on 01/07/2026
+Version 1.0.0
 @author: jvilla
 
 MODIFICATIONS:
     -base_dir to change
     -PROCCESS TIME
     -(major) stats in DEM and XC
-
 """
 
 import os
@@ -39,7 +38,6 @@ test_dir = base_dir / "4_test"
     → Shapefile final_stats
 '''   
 
-
 # ── configuración ──────────────────────────────────────────────────────────────
 ROI_BBOX        = (-72.0, -17.0, -68.0, -13.0)
 YEARS_TEST      = [2003,2005,2012,2020, 2024]
@@ -65,9 +63,6 @@ def load_countries(path, adm0_codes, roi_geom):
     pays = pays.clip(roi_geom)
     pays = pays.to_crs("EPSG:4326")
     return pays.reset_index(drop=True)
-
-
-
 
 # ── 2. Máscara de elevación ────────────────────────────────────────────────────
 def load_elevation_mask(dem_path, roi_geom_list, threshold=2000):
