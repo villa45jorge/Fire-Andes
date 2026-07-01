@@ -1,14 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 20/03/2026
-Version 1.2.0
+Modified on 01/07/2026
+Version 2.3.0
 @author: jvilla
-
-MODIFICATIONS:
-
-
-
-
 """
 
 import os
@@ -41,17 +35,16 @@ test_dir = base_dir / "4_test"
     → Shapefile final_stats
 '''   
 
-
 @contextmanager
 def timer(label):
     """Context manager para medir tiempos de ejecución."""
     start = time.perf_counter()
-    print(f"  ⏱  [{label}] iniciando...")
+    print(f"[{label}] iniciando...")
     try:
         yield
     finally:
         elapsed = time.perf_counter() - start
-        print(f"  ✅ [{label}] completado en {elapsed:.2f}s")
+        print(f"[{label}] completado en {elapsed:.2f}s")
 
 ROI_BBOX        = (-74.0, -19.0, -66.0, -11.0)
 YEARS_TEST      = [2003,2005,2012,2015,2020, 2024]
@@ -151,7 +144,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
     for year, ba_path in ba_files_by_year.items():
         year_start = time.perf_counter()
         print(f"\n{'─'*60}")
-        print(f"  📅 Procesando año {year}: {ba_path.name}")
+        print(f"Procesando año {year}: {ba_path.name}")
         
         
         with timer(f"{year}: lectura BA"):
@@ -184,7 +177,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
 
         valid = (ba_data > 0) & elev_mask_r
         if not valid.any():
-            print(f"    ⚠️  Sin áreas quemadas válidas en {year}")
+            print(f"Sin áreas quemadas válidas en {year}")
             continue
 
         with timer(f"{year}: carga WorldCover"):
@@ -198,7 +191,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
         with timer(f"{year}: etiquetado eventos (label)"):
             structure = np.ones((3, 3), dtype=int)
             labeled_arr, num_events = ndimage.label(valid, structure=structure)
-        print(f"    🔥 Eventos detectados: {num_events}")
+        print(f"Eventos detectados: {num_events}")
 
         with timer(f"{year}: zonal stats ({num_events} eventos)"):
             for event_id in range(1, num_events + 1):
@@ -264,7 +257,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
         ).drop(columns=["index_right"], errors="ignore")
 
     total_elapsed = time.perf_counter() - pipeline_start
-    print(f"  🕐 Tiempo total process_burned_areas: {total_elapsed:.2f}s")
+    print(f"Tiempo total process_burned_areas: {total_elapsed:.2f}s")
     return gdf
 
 
@@ -272,7 +265,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
 def run_pipeline():
     pipeline_start = time.perf_counter()
     print(f"\n{'═'*60}")
-    print("🚀 Iniciando pipeline")
+    print("Iniciando pipeline")
     print(f"{'═'*60}")
 
     with timer("carga países"):
@@ -290,7 +283,7 @@ def run_pipeline():
             for year in YEARS_TEST
             if list((data_dir/'mosaics_BA').glob(f"*{year}*.tif"))
         }
-    print(f"  📂 Archivos BA encontrados: {list(ba_files_by_year.keys())}")
+    print(f"Archivos BA encontrados: {list(ba_files_by_year.keys())}")
 
     with timer("carga WorldCover"):
         wc_data, wc_transform = load_worldcover(
@@ -306,7 +299,7 @@ def run_pipeline():
         )
 
     if gdf_final.empty:
-        print("⚠️  Sin resultados. Verifica los datos de entrada.")
+        print("⚠Sin resultados. Verifica los datos de entrada.")
         return
 
     with timer("escritura GeoPackage"):
@@ -315,11 +308,10 @@ def run_pipeline():
 
     total = time.perf_counter() - pipeline_start
     print(f"\n{'═'*60}")
-    print(f"✅ Pipeline completo — {len(gdf_final)} features guardados")
-    print(f"🕐 Tiempo total pipeline: {total:.2f}s")
+    print(f"Pipeline completo — {len(gdf_final)} features guardados")
+    print(f"Tiempo total pipeline: {total:.2f}s")
     print(f"{'═'*60}\n")
     return gdf_final
-
 
 if __name__ == "__main__":
     gdf = run_pipeline()
