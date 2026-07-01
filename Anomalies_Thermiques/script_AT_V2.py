@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 17/02/2026
-Version 3.0.0
+Modified on 01/07/2026
+Version 3.1.0
 @author: jvilla
 Test 2 avec donneés WC a bon resolution spatial
-Problems:
-    2)Pasar puntos de polygonos a centroide nuevamente  (correction)
 """
 
 from pathlib import Path
@@ -107,7 +105,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     df = pd.read_csv(file_path)
     print("df shape: ",df.shape)
 
-    #df =df.sample(n=100000, random_state=45) #10% sample
     df =df.sample(n=50000, random_state=54) #5% sample
     
     t = timer("Carga de datos", t)
@@ -117,7 +114,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
     countries = gpd.read_file(country_shape)
     countries = countries[['gaul0_name','geometry']]
     
-
     #Filter CSV file
     filt_df=df.query('confidence >= 80 and ' '(`type` == 0 or `type` == 2) and '
     'latitude <= 1 and latitude >= -20 and ' 'longitude <= -60 and longitude >= -80')[['latitude', 'longitude', 'acq_date', 'acq_time','satellite','confidence', 'type']]
@@ -292,7 +288,6 @@ def filt_csv(file_path,country_shape,DEM,WC,output_path):
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     gdf_oldest.to_file(output_path)
-    
     
     print("Work Done!")
     print(f"\n{'─'*40}")
