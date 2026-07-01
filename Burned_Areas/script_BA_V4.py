@@ -1,15 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 27/03/2026
-Version 4.2.0
+Modified on 01/07/2026
+Version 4.3.0
 @author: jvilla
-
 
 MODIFICATIONS:
     -test performing cluster calculs (temps)
-
-
-
 """
 
 #import os
@@ -29,7 +25,6 @@ from contextlib import contextmanager
 
 # Definir rutas
 base_dir = Path("/home/villaramosj/scratch_villaramosj/test_phd/data/MCD64A1")
-#base_dir = Path("/media/villaramos/Donnees/MesProgrammes/data/MCD64A1")
 data_dir = base_dir / "1_input"
 processed_dir = base_dir / "2_processed"
 output_dir = base_dir / "3_output"
@@ -43,17 +38,16 @@ test_dir = base_dir / "4_test"
     → Shapefile final_stats
 '''   
 
-
 @contextmanager
 def timer(label):
     """Context manager para medir tiempos de ejecución."""
     start = time.perf_counter()
-    print(f"  ⏱  [{label}] iniciando...")
+    print(f"[{label}] iniciando...")
     try:
         yield
     finally:
         elapsed = time.perf_counter() - start
-        print(f"  ✅ [{label}] completado en {elapsed:.2f}s")
+        print(f"[{label}] completado en {elapsed:.2f}s")
 
 ROI_BBOX        = (-80.0, -20.0, -60.0, 1.0)
 YEARS_TEST      = [2003,2005,2012,2015,2020, 2024]
@@ -150,7 +144,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
     for year, ba_path in ba_files_by_year.items():
         year_start = time.perf_counter()
         print(f"\n{'─'*60}")
-        print(f"  📅 Procesando año {year}: {ba_path.name}")
+        print(f"Procesando año {year}: {ba_path.name}")
 
         # ── Leer TODAS las bandas de una vez ──────────────────────
         with timer(f"{year}: lectura BA (12 bandas)"):
@@ -166,7 +160,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
 
         # ── Validación shape DEM ───────────────────────────────────
         if elev_mask.shape != (h, w):
-            print(f"    ⚠️  Shape mismatch DEM {elev_mask.shape} vs BA {(h,w)}")
+            print(f"Shape mismatch DEM {elev_mask.shape} vs BA {(h,w)}")
             continue
 
         # ── Iterar por mes (banda) ─────────────────────────────────
@@ -177,7 +171,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
             if not valid.any():
                 continue  # sin quemas este mes, pasar al siguiente
 
-            print(f"    📆 Mes {month:02d} — píxeles válidos: {valid.sum()}")
+            print(f"Mes {month:02d} — píxeles válidos: {valid.sum()}")
 
             wc_arr    = wc_data
             dem_r     = dem_data
@@ -190,7 +184,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
             with timer(f"{year}-{month:02d}: etiquetado eventos"):
                 structure   = np.ones((3, 3), dtype=int)
                 labeled_arr, num_events = ndimage.label(valid, structure=structure)
-            print(f"    🔥 Mes {month:02d} — eventos detectados: {num_events}")
+            print(f"Mes {month:02d} — eventos detectados: {num_events}")
 
             with timer(f"{year}-{month:02d}: zonal stats ({num_events} eventos)"):
                 for event_id in range(1, num_events + 1):
@@ -261,7 +255,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
         # ── Intento 2: los que siguen con NaN → join por centroide ────
         mask_nan = gdf["gaul0_name"].isna()
         if mask_nan.any():
-            print(f"    ⚠️  {mask_nan.sum()} features sin país — reintentando con centroide")
+            print(f"{mask_nan.sum()} features sin país — reintentando con centroide")
     
             # Crear GeoDataFrame temporal con centroides
             gdf_centroids = gdf[mask_nan].copy()
@@ -279,7 +273,7 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
         # ── Intento 3: los que aún quedan NaN → nearest neighbor ──────
         mask_nan2 = gdf["gaul0_name"].isna()
         if mask_nan2.any():
-            print(f"    ⚠️  {mask_nan2.sum()} features aún sin país — usando nearest")
+            print(f"{mask_nan2.sum()} features aún sin país — usando nearest")
     
             gdf_nearest = gdf[mask_nan2].copy()
             gdf_nearest["geometry"] = gdf_nearest.geometry.centroid
@@ -293,16 +287,16 @@ def process_burned_areas(ba_files_by_year, dem_data, elev_mask,
             gdf.loc[mask_nan2, "gaul0_name"]       = resultado2["gaul0_name"].values
     
         nan_restantes = gdf["gaul0_name"].isna().sum()
-        print(f"    ✅ NaN restantes tras 3 intentos: {nan_restantes}")
+        print(f"NaN restantes tras 3 intentos: {nan_restantes}")
     total_elapsed = time.perf_counter() - pipeline_start
-    print(f"  🕐 Tiempo total process_burned_areas: {total_elapsed:.2f}s")
+    print(f"Tiempo total process_burned_areas: {total_elapsed:.2f}s")
     return gdf
 
 # ── 6. Orquestador principal ───────────────────────────────────────────────────
 def run_pipeline():
     pipeline_start = time.perf_counter()
     print(f"\n{'═'*60}")
-    print("🚀 Iniciando pipeline")
+    print("Iniciando pipeline")
     print(f"{'═'*60}")
 
     with timer("carga países"):
@@ -316,7 +310,7 @@ def run_pipeline():
             for year in YEARS_TEST
             if list((data_dir/'mosaics_BA').glob(f"*{year}*.tif"))
         }
-    print(f"  📂 Archivos BA encontrados: {list(ba_files_by_year.keys())}")
+    print(f"Archivos BA encontrados: {list(ba_files_by_year.keys())}")
 
     # ── 2. Leer grid de referencia del primer BA ───────────────────
     with timer("lectura grid de referencia BA"):
@@ -327,7 +321,7 @@ def run_pipeline():
             )
             ba_ref_crs = src.crs
         ref_shape = (ba_ref_data.shape[1], ba_ref_data.shape[2])
-        print(f"  📐 Grid de referencia: shape={ref_shape}, crs={ba_ref_crs}")
+        print(f"Grid de referencia: shape={ref_shape}, crs={ba_ref_crs}")
 
     # ── 3. DEM y WorldCover ya al tamaño del BA ────────────────────
     with timer("carga elevación"):
@@ -356,7 +350,7 @@ def run_pipeline():
         )
 
     if gdf_final.empty:
-        print("⚠️  Sin resultados. Verifica los datos de entrada.")
+        print("Sin resultados. Verifica los datos de entrada.")
         return
 
     with timer("escritura GeoPackage"):
@@ -365,8 +359,8 @@ def run_pipeline():
 
     total = time.perf_counter() - pipeline_start
     print(f"\n{'═'*60}")
-    print(f"✅ Pipeline completo — {len(gdf_final)} features guardados")
-    print(f"🕐 Tiempo total pipeline: {total:.2f}s")
+    print(f"Pipeline completo — {len(gdf_final)} features guardados")
+    print(f"Tiempo total pipeline: {total:.2f}s")
     print(f"{'═'*60}\n")
     return gdf_final
 
