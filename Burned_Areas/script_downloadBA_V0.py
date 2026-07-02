@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Feb 28 12:11:28 2026
+Created on 02-07-2026
 
 @author: villaramos
 
-Version 0.0.0
-Issue: Nettoyer et commenter
-    
+Version 1.0.0
 """
 
 import ee
@@ -185,8 +183,6 @@ print("="*70)
 print("DESCARGA MODIS BURNED AREAS - REGIÓN ANDES")
 print("MODO: TILES FIJAS DE 10°x10°")
 print("="*70)
-#print("\nNOTA: Tiles de 0.5° ≈ (111km × 111km ≈ 15-40 MB)/2 cada una")
-#print("Total estimado: ~200-300 tiles, ~5-10 GB\n")
 
 # Preguntar si continuar
 respuesta = input("¿Continuar con la descarga? (s/n): ")
