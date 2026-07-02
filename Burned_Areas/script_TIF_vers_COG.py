@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Modified on 23/03/2026
-Version 0.0.0
+Modified on 02/07/2026
+Version 1.0.0
 @author: jvilla
-
-
-
 """
 
 from osgeo import gdal
@@ -37,9 +34,9 @@ for src_path, dst_path in files_to_convert:
     block_x, block_y = band.GetBlockSize()
     size_x, size_y   = ds.RasterXSize, ds.RasterYSize
     ram_gb = size_x * size_y * 4 / 1e9
-    print(f"  📐 Size     : {size_x} x {size_y}")
-    print(f"  📦 Block    : {block_x} x {block_y}  {'⚠️  strip layout' if block_y == 1 else '✅ tiled'}")
-    print(f"  🧠 RAM bruta: ~{ram_gb:.1f} GB")
+    print(f"Size     : {size_x} x {size_y}")
+    print(f"Block    : {block_x} x {block_y}  {'strip layout' if block_y == 1 else 'tiled'}")
+    print(f"RAM bruta: ~{ram_gb:.1f} GB")
     ds = None
 
     # ── conversión a COG ──────────────────────────────────────
@@ -62,7 +59,7 @@ for src_path, dst_path in files_to_convert:
     )
 
     elapsed = time.perf_counter() - start
-    print(f"  ⏱  Conversión completada en {elapsed:.1f}s")
+    print(f"Conversión completada en {elapsed:.1f}s")
 
     # ── verificación ──────────────────────────────────────────
     ds = gdal.Open(str(dst_path))
@@ -70,11 +67,11 @@ for src_path, dst_path in files_to_convert:
     block_x, block_y = band.GetBlockSize()
     size_x, size_y   = ds.RasterXSize, ds.RasterYSize
     file_gb = dst_path.stat().st_size / 1e9
-    print(f"  ✅ Block nuevo : {block_x} x {block_y}  {'✅ tiled' if block_x == 512 else '⚠️ revisar'}")
-    print(f"  💾 Tamaño disco: {file_gb:.2f} GB")
+    print(f"Block nuevo : {block_x} x {block_y}  {'tiled' if block_x == 512 else 'revisar'}")
+    print(f"Tamaño disco: {file_gb:.2f} GB")
     ds = None
 
 print(f"\n{'═'*60}")
-print("✅ Conversiones completadas. Actualiza las rutas en el pipeline:")
-print(f"   mosaico_andes_DEM_COG.tif")
-print(f"   mosaico_andes_WC_COG.tif")
+print("Conversiones completadas. Actualiza las rutas en el pipeline:")
+print(f"mosaico_andes_DEM_COG.tif")
+print(f"mosaico_andes_WC_COG.tif")
