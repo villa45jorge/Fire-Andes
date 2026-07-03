@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on 30/03/2026
+Created on 03/07/2026
 
 @author: villaramos
 
-Version 1.0.0
-Issue: Nettoyer et commenter
-    
+Version 1.1.0
 """
-
 """
 Descarga MCD64A1 con grid de píxeles consistente
 ─────────────────────────────────────────────────
@@ -82,14 +79,14 @@ def download_tile(lat_min, lat_max, lon_min, lon_max, tile_name, output_dir, yea
                   .filterBounds(region))
 
     if collection.size().getInfo() == 0:
-        print(f"  ⏭️  Sin datos: {tile_name}_{year}_{month:02d}")
+        print(f"Sin datos: {tile_name}_{year}_{month:02d}")
         return None
 
     monthly_ba = collection.first().clip(region)
 
     output_file = os.path.join(output_dir, f'{tile_name}_{year}_{month:02d}.tif')
     if os.path.exists(output_file):
-        print(f"  ⏭️  Ya existe: {tile_name}_{year}_{month:02d}")
+        print(f"Ya existe: {tile_name}_{year}_{month:02d}")
         return output_file
 
     # ── FIX CLAVE: calcular dimensiones exactas ──────────────────────────────
@@ -234,8 +231,8 @@ print(f"✗ Tiles fallidas   : {len(all_failed)}")
 
 if all_downloaded:
     total_gb = sum(os.path.getsize(f) for f in all_downloaded) / (1024 ** 3)
-    print(f"💾 Tamaño total: {total_gb:.2f} GB")
-    print(f"📁 Directorio : {output_dir}")
+    print(f"Tamaño total: {total_gb:.2f} GB")
+    print(f"Directorio : {output_dir}")
 
     print("\nDetalles por región:")
     for rname in regions:
